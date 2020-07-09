@@ -1,6 +1,8 @@
 const restify = require('restify');
 const mongoose = require('mongoose');
 const config = require('./config');
+const User = require('./models/User');
+const bcrypt = require('bcrypt')
 
 const server = restify.createServer();
 
@@ -13,7 +15,18 @@ server.listen(config.PORT, () => {
             useUnifiedTopology: true,
         }
     )
-    .then(() => console.log("Database is connected"))
+    .then(async () => {
+        console.log("Database is connected");
+        const rootUser = new User({
+            login: config.ROOT_LOGIN,
+            password: config.ROOT_PASSWORD,
+            name: config.ROOT_NAME,
+            surname: config.ROOT_SURNAME,
+            isRootUser: true,
+        });
+        rootUser.password = bcrypt.hashSync(rootUser.password, bcrypt.genSaltSync(10));
+        await rootUser.save();
+    })
     .catch(err => {
         console.log(`Database connection error: ${err.msg}`)
     });
@@ -22,3 +35,7 @@ server.listen(config.PORT, () => {
 const db = mongoose.connection;
 
 db.on('error', err => console.log(err));
+
+db.once('open', () => {
+    require('./routes/users')(server);
+});

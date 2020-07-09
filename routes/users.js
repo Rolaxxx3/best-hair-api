@@ -1,27 +1,46 @@
 const errors = require('restify-errors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Admin = require('../models/Admin');
+const User = require('../models/User');
 const auth = require('../auth');
 const config = require('../config');
 
 module.exports = server => {
-    server.post('/_api/admin/create', (req, res, next) => {
-        const { email, password, name, surname, photo } = req.body;
-
-        const admin = new Admin({
+    server.get('/_api/users', async (req, res, next) => {
+        try {
+            const users = await User.find({});
+            res.send(users);
+            next();
+        } catch (error) {
+            next(new errors.InvalidContentError(error));
+        }
+    });
+    server.post('/_api/users', (req, res, next) => {
+        const {
             email,
             password,
             name,
             surname,
             photo,
+            login,
+            isRootUser
+        } = req.body;
+
+        const user = new User({
+            email,
+            password,
+            name,
+            surname,
+            photo,
+            login,
+            isRootUser,
         });
 
         bcrypt.genSalt(10, (err, salt) => {
-            bcrypt.hash(admin.password, salt, async (err, hash) => {
-                admin.password = hash;
+            bcrypt.hash(user.password, salt, async (err, hash) => {
+                user.password = hash;
                 try {
-                    const newAdmin = await admin.save();
+                    const newUser = await user.save();
                     res.send(201);
                     next();
                 } catch (err) {
@@ -31,7 +50,7 @@ module.exports = server => {
         });
     });
 
-    server.post('/_api/admin/sign-in', async (req, res, next) => {
+    server.post('/_api/users/sign-in', async (req, res, next) => {
         const { email, password } = req.body;
 
         try {
