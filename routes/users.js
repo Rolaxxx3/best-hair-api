@@ -36,20 +36,25 @@ module.exports = server => {
             login,
             owner_id,
             instagram,
+            description,
         } = req.body;
         const owner = await User.findById(owner_id);
 
         if (owner.is_root_user || owner_id === req.params.id) {
             try {
-                const newPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-                await User.findOneAndUpdate({_id: req.params.id},
-                    {
-                        password: newPassword,
-                        name: name,
-                        surname: surname,
-                        photo: photo,
-                        login: login,
-                        instagram: instagram,
+                let newPassword;
+                if (password) {
+                    newPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
+                }
+                const user = await User.findById(req.params.id);
+                await user.update({
+                        password: newPassword || user.password,
+                        name: name || user.name,
+                        surname: surname || user.surname,
+                        photo: photo || user.photo,
+                        login: login || user.login,
+                        instagram: instagram || user.instagram,
+                        description: description || user.description,
                     });
                 res.send(200);
                 next();
@@ -85,24 +90,43 @@ module.exports = server => {
             login,
             owner_id,
         } = req.body;
-        const owner = await User.findById(owner_id);
-        if (owner.is_root_user) {
-            try {
-                const user = new User({
-                    login: login,
-                    password: password,
-                    name: name,
-                    surname: surname,
-                });
-                user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
-                await user.save();
-                res.send(201);
-                next();
-            } catch (error) {
-                return next(new errors.InternalServerError());
+        if (owner_id) {
+            const owner = await User.findById(owner_id);
+            if (owner.is_root_user) {
+                try {
+                    const user = new User({
+                        login: login,
+                        password: password,
+                        name: name,
+                        surname: surname,
+                    });
+                    user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
+                    await user.save();
+                    res.send(201);
+                    next();
+                } catch (error) {
+                    return next(new errors.InternalServerError());
+                }
+            } else {
+                return next(new errors.ForbiddenError());
             }
         } else {
-            return next(new errors.ForbiddenError());
+            return next(errors.BadRequestError("owner_id is required"));
+        }
+    });
+    server.del('/_api/users/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
+        try {
+            const { owner_id } = req.body;
+            const owner = User.findById(owner_id);
+            if (owner.is_root_user || req.params.id === owner_id) {
+                await User.findOneAndDelete(req.params.id);
+                res.send(200);
+                next();
+            } else {
+                next(errors.ForbiddenError());
+            }
+        } catch (error) {
+            next(new errors.InvalidContentError(error));
         }
     });
 };

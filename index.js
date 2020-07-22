@@ -27,6 +27,7 @@ server.listen(config.PORT, () => {
                 surname: config.ROOT_SURNAME,
                 is_root_user: true,
                 instagram: config.ROOT_INSTAGRAM,
+                description: config.ROOT_DESCRIPTION,
             });
             rootUser.password = bcrypt.hashSync(rootUser.password, bcrypt.genSaltSync(10));
             await rootUser.save();

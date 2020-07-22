@@ -8,7 +8,8 @@ module.exports = {
     ROOT_PASSWORD: process.env.ROOT_PASSWORD || 'secret',
     ROOT_NAME: process.env.ROOT_NAME || 'name',
     ROOT_SURNAME: process.env.ROOT_SURNAME || 'surname',
-    ROOT_INSTAGRAM: process.env.ROOT_INSTAGRAM || 'instagram'
+    ROOT_INSTAGRAM: process.env.ROOT_INSTAGRAM || 'instagram',
+    ROOT_DESCRIPTION: process.env.ROOT_DESCRIPTION || 'description'
 };
 
 function getDatabaseUri() {

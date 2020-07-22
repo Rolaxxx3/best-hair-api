@@ -46,6 +46,10 @@ const UserSchema = new mongoose.Schema({
     instagram: {
       type: String,
       required: false,
+    },
+    description: {
+        type: String,
+        required: true,
     }
 }, {
     versionKey: false,
