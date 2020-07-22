@@ -32,6 +32,10 @@ const CertificateSchema = new mongoose.Schema({
     date_receiving: {
         type: Date,
         required: true,
+    },
+    description: {
+        type: String,
+        required: true,
     }
 }, {
     versionKey: false,

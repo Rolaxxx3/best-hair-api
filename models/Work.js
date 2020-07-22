@@ -27,6 +27,10 @@ const WorkSchema = new mongoose.Schema({
     create_time: {
         type: Date,
         default: Date.now,
+    },
+    description: {
+        type: String,
+        required: true,
     }
 }, {
     versionKey: false,
