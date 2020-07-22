@@ -5,10 +5,12 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: false,
         trim: true,
+        select: false,
     },
     password: {
         type: String,
         required: true,
+        select: false,
     },
     name: {
         type: String,
@@ -23,11 +25,30 @@ const UserSchema = new mongoose.Schema({
     photo: {
         type: String,
         trim: true,
+        required: false,
     },
-    isRootUser: {
+    is_root_user: {
         type: Boolean,
         default: false,
+    },
+    is_show: {
+        type: Boolean,
+        default: true,
+    },
+    type: {
+        type: String,
+        default: "User",
+    },
+    create_time: {
+        type: Date,
+        default: Date.now,
+    },
+    instagram: {
+      type: String,
+      required: false,
     }
+}, {
+    versionKey: false,
 });
 
 const User = mongoose.model('User', UserSchema);
