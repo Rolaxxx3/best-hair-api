@@ -4,7 +4,6 @@ const User = require('./../models/User');
 const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
-const test_description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin et arcu vulputate, finibus est ut, sodales orci. Etiam in justo lacinia enim posuere hendrerit ut sit amet sem. Suspendisse enim orci, laoreet eu eros non, tincidunt consectetur nulla. Aenean at imperdiet neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Morbi aliquam massa in lacinia feugiat. Nullam varius scelerisque ligula, ac aliquet mauris ornare eget. Nulla facilisi. Interdum et malesuada fames ac ante ipsum primis in faucibus. Fusce neque orci, lobortis et felis eu, vulputate sollicitudin metus. Nunc vel turpis euismod, sodales elit a, commodo diam. Nunc convallis porttitor iaculis. Donec lectus ex, varius eu leo a, iaculis tempus lectus.";
 const mocha = require('mocha');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
@@ -16,15 +15,9 @@ const describe = mocha.describe;
 const beforeEach = mocha.beforeEach;
 const it = mocha.it;
 const example_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-const test_user = {
-    _id: new ObjectId(),
-    login: "ruslan_415",
-    password: "testpassword",
-    name: "Ruslan",
-    surname: "Hryshyn",
-    instagram: "ruslan_13",
-    description: test_description,
-};
+
+const test_user = require('../constants/test_user');
+
 chai.use(chaiHttp);
 
 async function getRootUser() {
@@ -34,7 +27,7 @@ async function getRootUser() {
 const root_user = getRootUser();
 
 beforeEach(async () => {
-    await User.findById(test_user._id).remove().exec();
+    await User.findById(test_user._id).deleteOne();
     const user = new User(test_user);
     user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
     await user.save();
@@ -136,7 +129,7 @@ describe('POST /_api/users', () => {
                name: "Alina",
                surname: "Pogrebnyak",
                instagram: "alina123_inst",
-               description: test_description,
+               description: test_user.description,
                owner_id: user._id,
            }
 
@@ -163,7 +156,7 @@ describe('POST /_api/users', () => {
                 name: "Alina",
                 surname: "Pogrebnyak",
                 instagram: "alina123_inst",
-                description: test_description,
+                description: test_user.description,
                 owner_id: test_user._id,
             }
 
@@ -190,7 +183,7 @@ describe('POST /_api/users', () => {
                 name: "Alina",
                 surname: "Pogrebnyak",
                 instagram: "alina123_inst",
-                description: test_description,
+                description: test_user.description,
                 owner_id: '2132145211212',
             }
 
@@ -288,7 +281,7 @@ describe('DELETE /_api/users/:id', () => {
         });
     });
 
-    it('it should delete user by root user', (done) => {
+    it('it should delete user by himself', (done) => {
         User.findById(test_user._id).then((user) => {
             const token = jwt.sign(user.toJSON(), config.JWT_SECRET, {
                 expiresIn: '15m'
@@ -303,8 +296,8 @@ describe('DELETE /_api/users/:id', () => {
                 .send(request_data)
                 .end(async (err, res) => {
                     res.should.have.status(200);
-                    const isDeleted = Boolean(await User.findById(user._id));
-                    isDeleted.should.be.equal(false);
+                    const isDeleted = !Boolean(await User.findById(user._id));
+                    isDeleted.should.be.equal(true);
                     done();
                 });
         });

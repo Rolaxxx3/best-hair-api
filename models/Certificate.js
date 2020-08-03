@@ -25,10 +25,6 @@ const CertificateSchema = new mongoose.Schema({
         type: String,
         default: "Certificate",
     },
-    create_time: {
-        type: Date,
-        default: Date.now,
-    },
     date_receiving: {
         type: Date,
         required: true,

@@ -32,11 +32,11 @@ module.exports = server => {
             photo,
             description,
         } = req.body;
-
         if (owner_id) {
             try {
+                const user = await User.findById(owner_id).exec();
                 const work = new Work({
-                    owner_id,
+                    owner_id: user._id,
                     title,
                     photo,
                     description,
@@ -45,7 +45,7 @@ module.exports = server => {
                 res.send(201);
                 next();
             } catch (err) {
-                return next(new errors.InternalError(err.message));
+                return next(new errors.InvalidContentError(err.message));
             }
         } else {
             return next(errors.InvalidContentError("owner_id is required"));
@@ -55,14 +55,14 @@ module.exports = server => {
     server.del('/_api/works/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         try {
             const { owner_id } = req.body;
-            const owner = User.findById(owner_id).exec();
+            const owner = await User.findById(owner_id).exec();
             const work = await Work.findById(req.params.id).exec();
-            if (work.owner_id === req.params.id || owner.is_root_user) {
-                work.deleteOne();
+            if (work.owner_id === String(owner._id) || owner.is_root_user) {
+                await work.deleteOne();
                 res.send(200);
                 next();
             } else {
-                next(errors.ForbiddenError());
+                next(errors.ForbiddenError('Not enough permission'));
             }
         } catch (error) {
             next(new errors.InvalidContentError(error));
@@ -76,23 +76,23 @@ module.exports = server => {
             photo,
             description,
         } = req.body;
-        const owner = await User.findById(owner_id).exec();
-        const work = await Work.findById(req.params.id).exec();
+        try {
+            const owner = await User.findById(owner_id).exec();
+            const work = await Work.findById(req.params.id).exec();
 
-        if (owner.is_root_user || owner_id === work.owner_id) {
-            try {
-                await work.update({
+            if (owner.is_root_user || owner_id === work.owner_id) {
+                await work.updateOne({
                     title: title || work.title,
                     photo: photo || work.photo,
                     description: description || work.description,
                 });
                 res.send(200);
-                next();
-            } catch (error) {
-                return next(new errors.InternalServerError(error));
+                    next();
+            } else {
+                return next(new errors.ForbiddenError('Not enough permission'));
             }
-        } else {
-            return next(new errors.ForbiddenError());
+        } catch (error) {
+            return next(new errors.InvalidContentError(error));
         }
     });
 };
