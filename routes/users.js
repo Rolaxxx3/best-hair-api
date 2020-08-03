@@ -23,7 +23,7 @@ module.exports = server => {
             res.send(user);
             next();
         } catch (error) {
-            next(new errors.InvalidContentError(error));
+            next(new errors.NotFoundError(error));
         }
     });
 
@@ -38,16 +38,17 @@ module.exports = server => {
             instagram,
             description,
         } = req.body;
-        const owner = await User.findById(owner_id);
+        if (owner_id) {
+            const owner = await User.findById(owner_id).exec();
 
-        if (owner.is_root_user || owner_id === req.params.id) {
-            try {
-                let newPassword;
-                if (password) {
-                    newPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-                }
-                const user = await User.findById(req.params.id);
-                await user.update({
+            if (owner.is_root_user || owner_id === req.params.id) {
+                try {
+                    let newPassword;
+                    if (password) {
+                        newPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
+                    }
+                    const user = await User.findById(req.params.id);
+                    await user.updateOne({
                         password: newPassword || user.password,
                         name: name || user.name,
                         surname: surname || user.surname,
@@ -56,20 +57,23 @@ module.exports = server => {
                         instagram: instagram || user.instagram,
                         description: description || user.description,
                     });
-                res.send(200);
-                next();
-            } catch (error) {
-                return next(new errors.InternalServerError(error));
+                    res.send(200);
+                    next();
+                } catch (error) {
+                    return next(new errors.InternalServerError(error));
+                }
+            } else {
+                return next(new errors.ForbiddenError('Not have enough permissions'));
             }
         } else {
-            return next(new errors.ForbiddenError());
+            return next(new errors.InvalidContentError('owner_id is required'));
         }
     });
 
     server.post('/_api/users/sign-in', async (req, res, next) => {
-        const { email, password } = req.body;
+        const { login, password } = req.body;
         try {
-            const user = await auth.authenticate(email, password);
+            const user = await auth.authenticate(login, password);
             const token = jwt.sign(user.toJSON(), config.JWT_SECRET, {
                 expiresIn: '15m'
             });
@@ -82,48 +86,57 @@ module.exports = server => {
         }
     });
 
-    server.post('/_api/users/', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
+    server.post('/_api/users', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         const {
             password,
             name,
             surname,
             login,
             owner_id,
+            description,
+            photo,
+            instagram,
         } = req.body;
-        if (owner_id) {
-            const owner = await User.findById(owner_id);
+
+        try {
+            const owner = await User.findById(owner_id).exec();
+            if (!owner) return next(errors.InvalidContentError('Invalid owner_id'));
             if (owner.is_root_user) {
-                try {
-                    const user = new User({
-                        login: login,
-                        password: password,
-                        name: name,
-                        surname: surname,
-                    });
-                    user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
-                    await user.save();
-                    res.send(201);
-                    next();
-                } catch (error) {
-                    return next(new errors.InternalServerError());
+                const user = new User({
+                    loin: login,
+                    password: password,
+                    name: name,
+                    surname: surname,
+                    description: description,
+                    photo: photo,
+                    instagram: instagram,
+                });
+                user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
+                await user.save();
+                res.send(201);
+                next();
+                } else {
+                    return next(new errors.ForbiddenError('Not have enough permissions'));
                 }
-            } else {
-                return next(new errors.ForbiddenError());
-            }
-        } else {
-            return next(errors.BadRequestError("owner_id is required"));
+        } catch (error) {
+            return next(new errors.BadRequestError(error));
         }
     });
+
     server.del('/_api/users/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         try {
             const { owner_id } = req.body;
-            const owner = User.findById(owner_id);
-            if (owner.is_root_user || req.params.id === owner_id) {
-                await User.findOneAndDelete(req.params.id);
-                res.send(200);
-                next();
+            if (owner_id) {
+                const owner = await User.findById(owner_id).exec();
+                if (owner.is_root_user || req.params.id === owner_id) {
+                    await User.findOneAndDelete({_id: req.params.id});
+                    res.send(200);
+                    next();
+                } else {
+                    next(errors.ForbiddenError('Not have enough permissions'));
+                }
             } else {
-                next(errors.ForbiddenError());
+                next(new errors.InvalidContentError('owner_id is required'));
             }
         } catch (error) {
             next(new errors.InvalidContentError(error));

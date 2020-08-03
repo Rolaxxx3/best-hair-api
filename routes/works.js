@@ -32,6 +32,7 @@ module.exports = server => {
             photo,
             description,
         } = req.body;
+
         if (owner_id) {
             try {
                 const work = new Work({
@@ -54,8 +55,8 @@ module.exports = server => {
     server.del('/_api/works/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         try {
             const { owner_id } = req.body;
-            const owner = User.findById(owner_id);
-            const work = await Work.findById(req.params.id);
+            const owner = User.findById(owner_id).exec();
+            const work = await Work.findById(req.params.id).exec();
             if (work.owner_id === req.params.id || owner.is_root_user) {
                 work.deleteOne();
                 res.send(200);
@@ -75,8 +76,8 @@ module.exports = server => {
             photo,
             description,
         } = req.body;
-        const owner = await User.findById(owner_id);
-        const work = await Work.findById(req.params.id);
+        const owner = await User.findById(owner_id).exec();
+        const work = await Work.findById(req.params.id).exec();
 
         if (owner.is_root_user || owner_id === work.owner_id) {
             try {

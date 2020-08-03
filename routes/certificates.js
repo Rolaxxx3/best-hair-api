@@ -34,16 +34,15 @@ module.exports = server => {
             date_receiving,
             description,
         } = req.body;
-
-        const certificate = new Certificate({
-            owner_id,
-            teacher,
-            title,
-            photo,
-            date_receiving,
-            description,
-        });
         try {
+            const certificate = new Certificate({
+                owner_id,
+                teacher,
+                title,
+                photo,
+                date_receiving,
+                description,
+            });
             await certificate.save();
             res.send(201);
             next();
@@ -51,11 +50,12 @@ module.exports = server => {
             return next(new errors.InternalError(err.message));
         }
     });
+
     server.del('/_api/certificates/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         try {
             const { owner_id } = req.body;
-            const owner = User.findById(owner_id);
-            const certificate = await Certificate.findById(req.params.id);
+            const owner = User.findById(owner_id).exec();
+            const certificate = await Certificate.findById(req.params.id).exec;
             if (certificate.owner_id === req.params.id || owner.is_root_user) {
                 certificate.deleteOne();
                 res.send(200);
@@ -67,6 +67,7 @@ module.exports = server => {
             next(new errors.InvalidContentError(error));
         }
     });
+
     server.patch('/_api/certificates/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         const {
             owner_id,
@@ -76,11 +77,11 @@ module.exports = server => {
             date_receiving,
             description,
         } = req.body;
-        const owner = await User.findById(owner_id);
-        const certificate = await Certificate.findById(req.params.id);
+        try {
+            const owner = await User.findById(owner_id).exec();
+            const certificate = await Certificate.findById(req.params.id).exec();
 
-        if (owner.is_root_user || owner_id === certificate.owner_id) {
-            try {
+            if (owner.is_root_user || owner_id === certificate.owner_id) {
                 await certificate.update({
                     teacher: teacher || certificate.teacher,
                     title: title || certificate.title,
@@ -90,11 +91,11 @@ module.exports = server => {
                 });
                 res.send(200);
                 next();
-            } catch (error) {
-                return next(new errors.InternalServerError(error));
+            } else {
+                return next(new errors.ForbiddenError());
             }
-        } else {
-            return next(new errors.ForbiddenError());
+        } catch (error) {
+            return next(new errors.InvalidContentError(error));
         }
     });
 };
