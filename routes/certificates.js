@@ -35,8 +35,9 @@ module.exports = server => {
             description,
         } = req.body;
         try {
+            const owner = await User.findById(owner_id).exec();
             const certificate = new Certificate({
-                owner_id,
+                owner_id: owner._id,
                 teacher,
                 title,
                 photo,
@@ -47,21 +48,21 @@ module.exports = server => {
             res.send(201);
             next();
         } catch (err) {
-            return next(new errors.InternalError(err.message));
+            return next(new errors.InvalidContentError(err.message));
         }
     });
 
     server.del('/_api/certificates/:id', rjwt({ secret: config.JWT_SECRET }), async (req, res, next) => {
         try {
             const { owner_id } = req.body;
-            const owner = User.findById(owner_id).exec();
-            const certificate = await Certificate.findById(req.params.id).exec;
-            if (certificate.owner_id === req.params.id || owner.is_root_user) {
-                certificate.deleteOne();
+            const owner = await User.findById(owner_id).exec();
+            const certificate = await Certificate.findById(req.params.id).exec();
+            if (certificate.owner_id === String(owner._id) || owner.is_root_user) {
+                await certificate.deleteOne();
                 res.send(200);
                 next();
             } else {
-                next(errors.ForbiddenError());
+                next(errors.ForbiddenError('Not enough permission'));
             }
         } catch (error) {
             next(new errors.InvalidContentError(error));
@@ -82,7 +83,7 @@ module.exports = server => {
             const certificate = await Certificate.findById(req.params.id).exec();
 
             if (owner.is_root_user || owner_id === certificate.owner_id) {
-                await certificate.update({
+                await certificate.updateOne({
                     teacher: teacher || certificate.teacher,
                     title: title || certificate.title,
                     photo: photo || certificate.photo,
@@ -92,7 +93,7 @@ module.exports = server => {
                 res.send(200);
                 next();
             } else {
-                return next(new errors.ForbiddenError());
+                return next(new errors.ForbiddenError('Not enough permission'));
             }
         } catch (error) {
             return next(new errors.InvalidContentError(error));
