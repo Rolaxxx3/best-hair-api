@@ -2,7 +2,7 @@ const restify = require('restify');
 const mongoose = require('mongoose');
 const config = require('./config');
 const User = require('./models/User');
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 
 const server = restify.createServer();
 
@@ -20,7 +20,7 @@ server.listen(config.PORT, () => {
         console.log("Database is connected");
         const rootUser = await User.find({is_root_user: true}).exec();
         if (!Boolean(rootUser.length)) {
-            const rootUser = new User({
+            const user = new User({
                 login: config.ROOT_LOGIN,
                 password: config.ROOT_PASSWORD,
                 name: config.ROOT_NAME,
@@ -29,8 +29,9 @@ server.listen(config.PORT, () => {
                 instagram: config.ROOT_INSTAGRAM,
                 description: config.ROOT_DESCRIPTION,
             });
-            rootUser.password = bcrypt.hashSync(rootUser.password, bcrypt.genSaltSync(10));
-            await rootUser.save();
+
+            user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10));
+            await user.save();
         }
     })
     .catch(err => {
@@ -46,3 +47,5 @@ db.once('open', () => {
     require('./routes/users')(server);
     require('./routes/certificates')(server);
 });
+
+module.exports = server;

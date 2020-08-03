@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const WorkSchema = new mongoose.Schema({
+const WorkSchema = new mongoose.Schema({ 
     owner_id: {
         type: String,
         required: true,
